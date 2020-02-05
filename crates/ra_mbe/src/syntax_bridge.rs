@@ -91,10 +91,26 @@ pub fn token_tree_to_syntax_node(
 
 impl TokenMap {
     pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
-        let &(token_id, _) = self.entries.iter().find(|(_, range)| match range {
-            TokenTextRange::Token(it) => *it == relative_range,
-            TokenTextRange::Delimiter(open, close) => {
-                *open == relative_range || *close == relative_range
+        let &(token_id, _) = self.entries.iter().find(|(id, range)| {
+            dbg!(id);
+            match range {
+                TokenTextRange::Token(it) => dbg!(*it) == dbg!(relative_range),
+                TokenTextRange::Delimiter(open, close) => {
+                    dbg!(dbg!(*open) == dbg!(relative_range) || dbg!(*close) == relative_range)
+                }
+            }
+        })?;
+        Some(token_id)
+    }
+
+    pub fn token_covering_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
+        let &(token_id, _) = self.entries.iter().find(|(id, range)| {
+            dbg!(id);
+            match range {
+                TokenTextRange::Token(it) => dbg!(*it) == dbg!(relative_range),
+                TokenTextRange::Delimiter(open, close) => {
+                    dbg!(relative_range).is_subrange(&dbg!(TextRange::from_to(open.start(), close.end())))
+                }
             }
         })?;
         Some(token_id)

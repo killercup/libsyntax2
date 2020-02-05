@@ -20,7 +20,7 @@ use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
-    SyntaxNode, SyntaxToken, TextUnit,
+    SyntaxNode, SyntaxToken, TextUnit, TextRange,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -234,6 +234,24 @@ pub use mbe::Origin;
 impl ExpansionInfo {
     pub fn call_node(&self) -> Option<InFile<SyntaxNode>> {
         Some(self.arg.with_value(self.arg.value.parent()?))
+    }
+
+    pub fn map_range_down(&self, range: InFile<TextRange>) -> Option<InFile<TextRange>> {
+        dbg!(self);
+        dbg!(range);
+        assert_eq!(range.file_id, self.expanded.file_id);
+
+        let range = range.value;
+        let token_in_exp = dbg!(self.exp_map.token_covering_range(range))?;
+        // let token_id = self.macro_def.0.map_id_down(token_id);
+
+        let range = dbg!(self.exp_map.range_by_token(token_in_exp))?;
+
+        // let token = algo::find_covering_element(&self.expanded.value, range).into_token()?;
+        // let token = self.expanded.value.covering_element(range).text_range();
+
+        // Some(self.expanded.with_value(token))
+        None
     }
 
     pub fn map_token_down(&self, token: InFile<&SyntaxToken>) -> Option<InFile<SyntaxToken>> {

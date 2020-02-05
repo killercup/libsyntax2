@@ -23,8 +23,8 @@ use crate::{db::AstDatabase, InFile};
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
     fn source(&self) -> InFile<SyntaxNodePtr>;
-    fn highlight_range(&self) -> TextRange {
-        self.source().value.range()
+    fn highlight_range(&self) -> InFile<TextRange> {
+        self.source().map(|val| val.range())
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static);
 }

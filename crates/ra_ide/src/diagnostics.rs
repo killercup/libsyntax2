@@ -41,9 +41,15 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     }
     let res = RefCell::new(res);
     let mut sink = DiagnosticSink::new(|d| {
+        let highlight_range = if let Some(expansion) = d.source().file_id.expansion_info(db) {
+            expansion.map_range_down(d.highlight_range()).unwrap()
+        } else {
+            d.highlight_range()
+        };
+
         res.borrow_mut().push(Diagnostic {
             message: d.message(),
-            range: d.highlight_range(),
+            range: highlight_range.value,
             severity: Severity::Error,
             fix: None,
         })
@@ -58,8 +64,13 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             .join(&d.candidate);
         let create_file = FileSystemEdit::CreateFile { source_root, path };
         let fix = SourceChange::file_system_edit("create module", create_file);
+        let highlight_range = if let Some(expansion) = d.source().file_id.expansion_info(db) {
+            expansion.map_range_down(d.highlight_range()).unwrap()
+        } else {
+            d.highlight_range()
+        };
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: highlight_range.value,
             message: d.message(),
             severity: Severity::Error,
             fix: Some(fix),
@@ -90,9 +101,14 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
                 builder.finish(),
             ))
         };
+        let highlight_range = if let Some(expansion) = d.source().file_id.expansion_info(db) {
+            expansion.map_range_down(d.highlight_range()).unwrap()
+        } else {
+            d.highlight_range()
+        };
 
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: highlight_range.value,
             message: d.message(),
             severity: Severity::Error,
             fix,
@@ -103,8 +119,13 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let replacement = format!("Ok({})", node.syntax());
         let edit = TextEdit::replace(node.syntax().text_range(), replacement);
         let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, edit);
+        let highlight_range = if let Some(expansion) = d.source().file_id.expansion_info(db) {
+            expansion.map_range_down(d.highlight_range()).unwrap()
+        } else {
+            d.highlight_range()
+        };
         res.borrow_mut().push(Diagnostic {
-            range: d.highlight_range(),
+            range: highlight_range.value,
             message: d.message(),
             severity: Severity::Error,
             fix: Some(fix),
@@ -489,6 +510,39 @@ mod tests {
 
             fn test_fn() {
                 let s = TestStruct{ two: 2, one: () };
+            }
+        ";
+        check_apply_diagnostic_fix(before, after);
+    }
+
+    #[test]
+    fn test_fill_struct_fields_macro() {
+        let before = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+
+            macro_rules! something {
+                ($x:expr) => {{ $x }}
+            }
+
+            fn test_fn() {
+                let s = something!(TestStruct{});
+            }
+        ";
+        let after = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+
+            macro_rules! something {
+                ($x:expr) => {{ $x }}
+            }
+
+            fn test_fn() {
+                let s = something!(TestStruct{ one: (), two: ()});
             }
         ";
         check_apply_diagnostic_fix(before, after);

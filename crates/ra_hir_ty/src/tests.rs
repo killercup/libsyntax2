@@ -315,3 +315,40 @@ fn no_such_field_diagnostics() {
     "###
     );
 }
+
+#[test]
+fn no_such_field_diagnostics_in_macro() {
+    let diagnostics = TestDB::with_files(
+        r"
+        //- /lib.rs
+        fn some() {}
+        fn filler() {}
+        fn items() {}
+        fn here() {}
+
+        macro_rules! something {
+            ($x:expr) => {{ $x }}
+        }
+
+        fn main() {
+            let _x = something!(
+                Foo {
+                    foo: 42,
+                }
+            );
+        }
+
+        pub struct Foo {
+            pub foo: i32,
+            pub bar: i32,
+        }
+        ",
+    )
+    .diagnostics();
+
+    assert_snapshot!(diagnostics, @r###"
+    "{foo:42,}": Missing structure fields:
+    - bar
+    "###
+    );
+}
